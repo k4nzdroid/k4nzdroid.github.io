@@ -1,66 +1,59 @@
 #!/bin/bash
 set -e
 
+################################################################################
+# 安装依赖
+################################################################################
+
+# 关闭 SELinux
+
+# 安装依赖
+# yum install -y epel-release
+# yum install -y gcc expect ansible python-pip python-devel smartmontools dmidecode libselinux-python git rsync dos2unix
+# yum install -y openssl openssl-devel openldap-devel
+
+apt-get install -y gcc expect ansible python-pip-whl python-dev-is-python2 smartmontools dmidecode git rsync dos2unix
+apt-get install -y openssl
+
+################################################################################
 # 初始化环境目录
-main_dir="/var/opt/adminset"
-adminset_dir="$main_dir/main"
+################################################################################
+
+main_dir="/opt/opsrc"
+adminset_dir="$main_dir/application"
 data_dir="$main_dir/data"
 config_dir="$main_dir/config"
-logs_dir="$main_dir/logs"
-cd "$( dirname "$0"  )"
-cd .. && cd ..
-cur_dir=$(pwd)
+logs_dir="$main_dir/log"
+
 mkdir -p $adminset_dir
+
 mkdir -p $data_dir/scripts
 mkdir -p $data_dir/files
 mkdir -p $data_dir/ansible/playbook
 mkdir -p $data_dir/ansible/roles
+
 mkdir -p $config_dir
 mkdir -p $config_dir/webssh
+
 mkdir -p $logs_dir
 mkdir -p $logs_dir/execlog
+
 mkdir -p $main_dir/pid
 
-# 关闭selinux
-se_status=$(getenforce)
-if [ $se_status != Enforcing ]
-then
-    echo "selinux is diabled, install progress is running"
-    sleep 1
-else
-    echo "Please attention, Your system selinux is enforcing"
-	setenforce 0
-	sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/sysconfig/selinux
-fi
-
-
-# 安装依赖
-echo "####install depandencies####"
-yum install -y epel-release
-yum install -y gcc expect ansible python-pip python-devel smartmontools dmidecode libselinux-python git rsync dos2unix
-yum install -y openssl openssl-devel openldap-devel
-
 # 分发代码
-if [ ! $cur_dir ] || [ ! $adminset_dir ]
-then
-    echo "install directory info error, please check your system environment program exit"
-    exit 1
-else
-    rsync --delete --progress -ra --exclude '.git' $cur_dir/ $adminset_dir
-fi
+rsync --delete --progress -ra --exclude '.git' ./ $adminset_dir
+pwd
+exit
+
 scp $adminset_dir/install/server/ansible/ansible.cfg /etc/ansible/ansible.cfg
 
-#安装数据库
-echo "####install database####"
-echo "installing a new mariadb...."
+# 安装 MySQL
 yum install -y mariadb-server mariadb-devel
 /bin/systemctl start mariadb
 mysql -e "CREATE DATABASE if not exists adminset DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;"
 /bin/systemctl enable mariadb.service
 
-# 安装mongodb
-echo "####install mongodb####"
-echo "installing a new Mongodb...."
+# 安装 MongoDB
 yum install -y mongodb mongodb-server
 /bin/systemctl enable mongod.service
 /bin/systemctl start mongod.service
@@ -104,7 +97,7 @@ cd $adminset_dir/vendor/webssh/
 scp /var/opt/adminset/main/install/server/webssh/webssh.service /usr/lib/systemd/system/webssh.service
 /bin/systemctl enable webssh.service
 
-#安装redis
+# 安装 Redis
 echo "####install redis####"
 yum install redis -y
 /bin/systemctl start redis
@@ -154,6 +147,4 @@ echo "#######Waiting Starting Service##############"
 /bin/systemctl restart nginx
 /bin/systemctl restart sshd
 /bin/systemctl restart adminset
-echo "please access website http://server_ip"
-echo "you have installed adminset successfully!!!"
-echo "################################################"
+
